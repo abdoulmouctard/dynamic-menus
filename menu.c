@@ -2,6 +2,32 @@
 #include <stdlib.h>
 #include "menu.h"
 
+
+
+void * test_function(void* ptr)
+{
+  return (char *) ptr;
+}
+
+
+menu_t* menu_generator()
+{
+  menu_t * menu = initialize_menu("ATOM SETTING");
+  add_menu_action(menu,"New Window", test_function(NULL));
+  add_menu_action(menu,"New File", test_function(NULL));
+  add_menu_action(menu,"Open File", test_function(NULL));
+  add_menu_action(menu,"Close Window", test_function(NULL));
+
+  menu_t * menu1 = initialize_menu("Help");
+  add_menu_action(menu1,"How to open Editor",test_function(NULL));
+  add_menu_action(menu1,"How to close Editor",test_function(NULL));
+  add_menu_action(menu1,"Back",test_function(NULL));
+  add_sub_menu(menu, menu1);
+
+  return menu;
+}
+
+
 menu_t* initialize_menu(const char* name)
 {
   int i;
@@ -83,7 +109,7 @@ void delete_menu(menu_t* menu)
     while ( cpt < menu->components_cpt ) {
       if( menu->components[cpt].type == MENU) {
         delete_menu(menu->components[cpt].content.submenu);
-        free (menu->components[cpt].content.submenu->name);
+        // free (menu->components[cpt].content.submenu->name);
         free (menu->components[cpt].content.submenu);
       }else if (menu->components[cpt].type == ACTION) {
         free(menu->components[cpt].content.action->name);
@@ -102,9 +128,9 @@ void delete_menu(menu_t* menu)
 */
 void go_back_menu(menu_t* menu)
 {
-  if (menu && menu->parent) {
-    launch_menu(menu->parent);
-  }
+  // if (menu && menu->parent) {
+  //   launch_menu(menu->parent);
+  // }
 }
 
 
@@ -136,23 +162,6 @@ item_t* select_menu_item(menu_t* menu, int position)
   }
   return NULL;
 }
-
-/**
-* @return
-*/
-void print(menu_t* menu, int file_desciptor)
-{
-
-}
-
-/**
-* @return
-*/
-void launch_menu(menu_t*menu)
-{
-
-}
-
 
 /**
 *
