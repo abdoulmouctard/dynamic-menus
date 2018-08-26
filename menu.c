@@ -2,32 +2,6 @@
 #include <stdlib.h>
 #include "menu.h"
 
-
-
-void * test_function(void* ptr)
-{
-  return (char *) ptr;
-}
-
-
-menu_t* menu_generator()
-{
-  menu_t * menu = initialize_menu("ATOM SETTING");
-  add_menu_action(menu,"New Window", test_function(NULL));
-  add_menu_action(menu,"New File", test_function(NULL));
-  add_menu_action(menu,"Open File", test_function(NULL));
-  add_menu_action(menu,"Close Window", test_function(NULL));
-
-  menu_t * menu1 = initialize_menu("Help");
-  add_menu_action(menu1,"How to open Editor",test_function(NULL));
-  add_menu_action(menu1,"How to close Editor",test_function(NULL));
-  add_menu_action(menu1,"Back",test_function(NULL));
-  add_sub_menu(menu, menu1);
-
-  return menu;
-}
-
-
 menu_t* initialize_menu(const char* name)
 {
   int i;
@@ -79,7 +53,7 @@ void add_sub_menu(menu_t* parent_menu, menu_t* sub_menu)
 /**
 * @return
 */
-void add_menu_action(menu_t* menu, const char* action_name, void(*fonction)(void*))
+void add_menu_action(menu_t* menu, const char* action_name, void(*fonction)(void*),void * param)
 {
   if ( (menu->components_cpt) < MAX_ITEM_SIZE-1)
   {
@@ -88,6 +62,7 @@ void add_menu_action(menu_t* menu, const char* action_name, void(*fonction)(void
     menu->components[menu->components_cpt].content.action->name = malloc(strlen(action_name)+1);
     strcpy(menu->components[menu->components_cpt].content.action->name,action_name);
     menu->components[menu->components_cpt].content.action->fonction = fonction;
+    menu->components[menu->components_cpt].content.action->parameter = param;
     menu->components_cpt ++;
     return;
   }
@@ -126,11 +101,11 @@ void delete_menu(menu_t* menu)
 /**
 * @return
 */
-void go_back_menu(menu_t* menu)
+void go_back_menu()
 {
-  // if (menu && menu->parent) {
-  //   launch_menu(menu->parent);
-  // }
+  if (CURRENT_MENU && CURRENT_MENU->parent){
+    CURRENT_MENU = CURRENT_MENU->parent;
+  }
 }
 
 
@@ -142,14 +117,6 @@ menu_t* get_root_menu(menu_t * menu)
     return get_root_menu(menu->parent);
   }
   return menu;
-}
-/**
-* @return
-*/
-void quit(menu_t *menu)
-{
-  menu = get_root_menu(menu);
-  delete_menu(menu);
 }
 
 /**
@@ -171,4 +138,16 @@ void exec_menu_action(action_t* action, void * param)
   if (action) {
     action->fonction(param);
   }
+}
+
+item_t* get_index_from_input(menu_t* menu,int n)
+{
+  if (!menu || menu->components_cpt == 0 || n<1 || n > MAX_ITEM_SIZE+1) return NULL;
+  int cpt=0,i=0;
+
+  for (; i < MAX_ITEM_SIZE; i++) {
+    if (menu->components[i].type == ACTION || menu->components[i].type == MENU )cpt++;
+    if (cpt==n)return menu->components+i;
+  }
+  return NULL;
 }

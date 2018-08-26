@@ -1,5 +1,4 @@
 #include "terminal.h"
-// #include "menu.h"
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -8,6 +7,7 @@
 #define BUFFER_SIZE 50
 
 extern int RUNNING;
+extern menu_t* CURRENT_MENU;
 
 void noncanonical_mode(struct termios *old)
 {
@@ -20,9 +20,9 @@ void noncanonical_mode(struct termios *old)
     new.c_iflag=old->c_iflag;
     new.c_oflag=old->c_oflag;
     new.c_cflag=old->c_cflag;
-    new.c_lflag=0;
-    new.c_cc[VMIN]=1;
-    new.c_cc[VTIME]=0;
+    new.c_lflag=1;
+    new.c_cc[VMIN]=2;
+    new.c_cc[VTIME]=1;
 
     if(tcsetattr(STDIN_FILENO,TCSANOW,&new)==-1) {
       // throw error
@@ -54,13 +54,13 @@ void clean_buffer(char* buffer, int size)
 void write_prompt(char* buffer,int buffer_size)
 {
   clean_buffer(buffer,buffer_size);
-  int n = sprintf(buffer, "\t\t\t>>>>>> ");
+  int n = sprintf(buffer, "\t\t>>>>>> ");
   write(STDOUT_FILENO, buffer, n+1);
 }
 
 void custom_write(char* buffer, int buffer_size)
 {
-  write(STDOUT_FILENO, "\t\t\t\t", 3);
+  write(STDOUT_FILENO, "\t\t", 3);
   write(STDIN_FILENO, buffer, buffer_size);
   write(STDIN_FILENO, "\n", 1);
 }
@@ -75,12 +75,16 @@ int cursor_start(int str_strlen, int buffer_size)
   return (tmp%2 == 0)?(tmp/2):(tmp-1)/2;
 }
 
-void print_item_new(char* buffer, int buffer_size, const char* string,int position)
+void print_item(char* buffer, int buffer_size, const char* string,int position,int menu_icon)
 {
   clean_buffer(buffer,buffer_size);
   int str_len = strlen(string);
   if (position>0 && position <= MAX_ITEM_SIZE) {
-    snprintf(buffer+6, str_len+8, "[%d] - %s",position,string);
+    if(menu_icon){
+      snprintf(buffer+6, str_len+12, "[%d] - %s (+)",position,string);
+    }else{
+      snprintf(buffer+6, str_len+8, "[%d] - %s",position,string);
+    }
   }else{
     int start = cursor_start(strlen(string),buffer_size);
     snprintf(buffer+start-4, str_len+9, "[+] %s [+]",string);
@@ -121,14 +125,15 @@ void print_menu(menu_t* menu)
 
   char* buffer = malloc(sizeof(char)*BUFFER_SIZE);
   write_line_new(buffer, BUFFER_SIZE,':',1);
-  print_item_new(buffer, BUFFER_SIZE, menu->name,0);
+  write_line_new(buffer, BUFFER_SIZE,':',1);
+  print_item(buffer, BUFFER_SIZE, menu->name,0,0);
   write_line_new(buffer, BUFFER_SIZE,':',1);
 
   for (int i = 0; i < MAX_ITEM_SIZE; i++) {
     if (menu->components[i].type == MENU) {
-      print_item_new(buffer, BUFFER_SIZE,menu->components[i].content.submenu->name,i+1);
+      print_item(buffer, BUFFER_SIZE,menu->components[i].content.submenu->name,i+1,1);
     }else if (menu->components[i].type == ACTION) {
-      print_item_new(buffer, BUFFER_SIZE,menu->components[i].content.action->name,i+1);
+      print_item(buffer, BUFFER_SIZE,menu->components[i].content.action->name,i+1,0);
     }
   }
   write_line_new(buffer, BUFFER_SIZE,':',2);
@@ -136,12 +141,31 @@ void print_menu(menu_t* menu)
   free(buffer);
 }
 
+void handle_input(menu_t* menu)
+{
+  char buffer[BUFFER_SIZE] = {'\0'};
+  int n = read(STDIN_FILENO, buffer, BUFFER_SIZE);
+  if (n>0) {
+    if (buffer[0]=='Q' || buffer[0]=='q') {
+      RUNNING = 0;
+    }
+    n = atoi(buffer);
+
+    item_t* item = get_index_from_input(menu,n);
+    if (!item || item->type == VOID) return;
+
+    if (item->type == MENU) {
+      CURRENT_MENU = item->content.submenu;
+    }else{
+      exec_menu_action(item->content.action,item->content.action->parameter);
+    }
+  }
+}
+
 void launch_menu(menu_t* menu)
 {
   while (RUNNING) {
-    print_menu(menu);
-    fgetc(stdin);
-    break;
+    print_menu(CURRENT_MENU);
+    handle_input(CURRENT_MENU);
   }
-  write(STDOUT_FILENO, "\n", 1);
 }

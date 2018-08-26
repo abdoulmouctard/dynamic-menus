@@ -14,5 +14,4 @@
 
 void noncanonical_mode(struct termios* old);
 void canonical_mode(struct termios *old);
-void print_menu(menu_t* menu);
 void launch_menu(menu_t*menu);
